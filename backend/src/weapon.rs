@@ -14,7 +14,12 @@ impl Weapon {
         reload_time: f64,
         mag_size: i32,
     ) -> Weapon {
-        if  base_damage<=0.0 || boon_damage<=0.0 || fire_rate<=0.0 || reload_time<=0.0|| mag_size<=0{
+        if base_damage <= 0.0
+            || boon_damage <= 0.0
+            || fire_rate <= 0.0
+            || reload_time <= 0.0
+            || mag_size <= 0
+        {
             panic!(
                 "Negative value for a base stat of the weapon, base damage {}, boon damage {}, fire rate {}, reload time {}, mag size {}",
                 base_damage, boon_damage, fire_rate, reload_time, mag_size
@@ -28,14 +33,17 @@ impl Weapon {
             mag_size,
         }
     }
+
+    pub fn current_damage(&self, boon_level: i32) -> f64 {
+        self.base_damage + boon_level as f64 * self.boon_damage
+    }
 }
+
 fn current_fire_rate(base_fire_rate: f64, bonus_fire_rate: i32) -> f64 {
     let percentage_fire_rate: f64 = 1.0 + bonus_fire_rate as f64 / 100.0;
     base_fire_rate * percentage_fire_rate
 }
-fn current_damage(base_damage: f64, boon_level: i32, damage_per_boon: f64) -> f64 {
-    base_damage + boon_level as f64 * damage_per_boon
-}
+
 fn dps_no_reload(damage: f64, fire_rate: f64) -> f64 {
     damage * fire_rate
 }
@@ -63,13 +71,15 @@ mod tests {
     }
 
     #[test]
-    fn test_dps_no_reload() {
-        assert_relative_eq!(dps_no_reload(5.0, 3.0), 15.0);
+    fn weapon_current_fire_rate() {
+        let weapon = Weapon::new(10.0, 0.5, 2.5, 2.0, 15);
+        let boon_level = 5;
+        assert_relative_eq!(weapon.current_damage(boon_level), 12.5);
     }
 
     #[test]
-    fn test_current_damage() {
-        assert_relative_eq!(current_damage(5.0, 10, 1.0), 15.0)
+    fn test_dps_no_reload() {
+        assert_relative_eq!(dps_no_reload(5.0, 3.0), 15.0);
     }
 
     #[test]
