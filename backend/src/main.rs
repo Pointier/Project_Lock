@@ -1,0 +1,4 @@
+mod weapon;
+fn main() {
+}
+
