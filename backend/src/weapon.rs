@@ -69,6 +69,14 @@ impl Weapon {
         }
     }
 
+    /*TODO: missing parameter for weapon damage :
+    - Flat Weapon Damage (coming only from abilities right now), is not multiplied by weapon damage
+    - damage fall of
+    - bullet resistance and reduction
+    - increased bullet damage (debuff inflicted directly by the heroes)
+    - crit multiplier
+    - damage per weapon type (burst, auto, shotgun)
+     */
     pub fn current_damage(&self, state: &WeaponState) -> f64 {
         let percentage_damage :f64 = 1.0 + state.bonus_damage as f64 / 100.0;
         (self.base_damage + state.boon_level as f64 * self.boon_damage) * percentage_damage
