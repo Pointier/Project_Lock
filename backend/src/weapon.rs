@@ -1,10 +1,19 @@
 //TODO: add enum for type of weapon or way to handle it
+#[derive(Debug, PartialEq)]
+pub enum WeaponType {
+    Auto,
+    Burst { burst_time: f64 }, // In seconds
+    Shotgun { base_pellet: f64, pellet_boon: f64 },
+}
 pub struct Weapon {
     base_damage: f64,
     boon_damage: f64,
-    fire_rate: f64,
-    reload_time: f64,
+    fire_rate: f64,   // Bullets per second
+    reload_time: f64, // In seconds
     mag_size: i32,
+    weapon_type: WeaponType,
+    start_falloff: f64, // In meter
+    end_falloff: f64,   // In meter
 }
 
 pub struct WeaponState {
@@ -42,22 +51,28 @@ impl WeaponState {
 }
 
 impl Weapon {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         base_damage: f64,
         boon_damage: f64,
         fire_rate: f64,
         reload_time: f64,
         mag_size: i32,
+        weapon_type: WeaponType,
+        start_falloff: f64,
+        end_falloff: f64,
     ) -> Weapon {
         if base_damage <= 0.0
             || boon_damage <= 0.0
             || fire_rate <= 0.0
             || reload_time <= 0.0
             || mag_size <= 0
+            || start_falloff <= 0.0
+            || end_falloff <= 0.0
         {
             panic!(
-                "Negative value for a base stat of the weapon, base damage {}, boon damage {}, fire rate {}, reload time {}, mag size {}",
-                base_damage, boon_damage, fire_rate, reload_time, mag_size
+                "Negative value for a base stat of the weapon, base damage {}, boon damage {}, fire rate {}, reload time {}, mag size {}, start_falloff {}, end_falloff {}",
+                base_damage, boon_damage, fire_rate, reload_time, mag_size, start_falloff, end_falloff
             )
         }
         Weapon {
@@ -66,6 +81,9 @@ impl Weapon {
             fire_rate,
             reload_time,
             mag_size,
+            weapon_type,
+            start_falloff,
+            end_falloff,
         }
     }
 
@@ -78,7 +96,7 @@ impl Weapon {
     - damage per weapon type (burst, auto, shotgun)
      */
     pub fn current_damage(&self, state: &WeaponState) -> f64 {
-        let percentage_damage :f64 = 1.0 + state.bonus_damage as f64 / 100.0;
+        let percentage_damage: f64 = 1.0 + state.bonus_damage as f64 / 100.0;
         (self.base_damage + state.boon_level as f64 * self.boon_damage) * percentage_damage
     }
 
@@ -99,29 +117,32 @@ mod tests {
 
     #[test]
     fn weapon_new() {
-        let weapon = Weapon::new(10.0, 0.5, 2.5, 2.0, 15);
+        let weapon = Weapon::new(10.0, 0.5, 2.5, 2.0, 15, WeaponType::Auto, 12.0, 24.0);
 
         assert_relative_eq!(weapon.base_damage, 10.0);
         assert_relative_eq!(weapon.boon_damage, 0.5);
         assert_relative_eq!(weapon.fire_rate, 2.5);
         assert_relative_eq!(weapon.reload_time, 2.0);
         assert_eq!(weapon.mag_size, 15);
+        assert_eq!(weapon.weapon_type, WeaponType::Auto);
+        assert_relative_eq!(weapon.start_falloff,12.0);
+        assert_relative_eq!(weapon.end_falloff,24.0);
     }
 
     #[test]
     #[should_panic]
     fn weapon_new_panic_negative_value() {
-        let _weapon = Weapon::new(-5.0, 0.0, 3.0, 4.0, 20);
+        let _weapon = Weapon::new(-5.0, 0.0, 3.0, 4.0, 20, WeaponType::Auto, 12.0, 24.0);
     }
 
     #[test]
-    fn weapon_state_default(){
+    fn weapon_state_default() {
         let state = WeaponState::default();
-        assert_eq!(state.boon_level,0);
-        
-        assert_eq!(state.bonus_damage,0);
-        assert_eq!(state.bonus_fire_rate,0);
-        assert_eq!(state.bonus_ammo,0);
+        assert_eq!(state.boon_level, 0);
+
+        assert_eq!(state.bonus_damage, 0);
+        assert_eq!(state.bonus_fire_rate, 0);
+        assert_eq!(state.bonus_ammo, 0);
     }
     #[test]
     fn weapon_state_new() {
@@ -140,44 +161,48 @@ mod tests {
 
     #[test]
     fn weapon_default_current_damage() {
-        let weapon = Weapon::new(10.0, 0.5, 2.5, 2.0, 15);
+        let weapon = Weapon::new(10.0, 0.5, 2.5, 2.0, 15, WeaponType::Auto, 12.0, 24.0);
         let state = WeaponState::default();
         assert_relative_eq!(weapon.current_damage(&state), 10.0);
     }
 
     #[test]
-    fn weapon_current_damage_bonus_damage(){
-        let weapon = Weapon::new(10.0, 0.5, 2.5, 2.0, 15);
-        let state = WeaponState{bonus_damage:50, ..WeaponState::default()};
-        assert_relative_eq!(weapon.current_damage(&state),15.0)
-
+    fn weapon_current_damage_bonus_damage() {
+        let weapon = Weapon::new(10.0, 0.5, 2.5, 2.0, 15, WeaponType::Auto, 12.0, 24.0);
+        let state = WeaponState {
+            bonus_damage: 50,
+            ..WeaponState::default()
+        };
+        assert_relative_eq!(weapon.current_damage(&state), 15.0)
     }
 
     #[test]
-    fn weapon_current_damage_boon_level(){
-
-        let weapon = Weapon::new(10.0, 0.5, 2.5, 2.0, 15);
-        let state = WeaponState{boon_level:5, ..WeaponState::default()};
-        assert_relative_eq!(weapon.current_damage(&state),12.5)
+    fn weapon_current_damage_boon_level() {
+        let weapon = Weapon::new(10.0, 0.5, 2.5, 2.0, 15, WeaponType::Auto, 12.0, 24.0);
+        let state = WeaponState {
+            boon_level: 5,
+            ..WeaponState::default()
+        };
+        assert_relative_eq!(weapon.current_damage(&state), 12.5)
     }
 
     #[test]
     fn weapon_current_fire_rate() {
-        let weapon = Weapon::new(10.0, 0.5, 2.5, 2.0, 15);
+        let weapon = Weapon::new(10.0, 0.5, 2.5, 2.0, 15, WeaponType::Auto, 12.0, 24.0);
         let bonus_fire_rate = 100;
         assert_relative_eq!(weapon.current_fire_rate(bonus_fire_rate), 5.0);
     }
 
     #[test]
     fn weapon_negative_fire_rate() {
-        let weapon = Weapon::new(10.0, 0.5, 2.5, 2.0, 15);
+        let weapon = Weapon::new(10.0, 0.5, 2.5, 2.0, 15, WeaponType::Auto, 12.0, 24.0);
         let bonus_fire_rate = -40;
         assert_relative_eq!(weapon.current_fire_rate(bonus_fire_rate), 1.5)
     }
 
     #[test]
     fn weapon_dps_no_reload() {
-        let weapon = Weapon::new(10.0, 0.5, 2.5, 2.0, 15);
+        let weapon = Weapon::new(10.0, 0.5, 2.5, 2.0, 15, WeaponType::Auto, 12.0, 24.0);
         let bonus_damage = 50;
         let boon_level = 0.5;
     }
