@@ -3,15 +3,22 @@ use serde::Deserialize;
 use std::{collections::HashMap, fs};
 mod weapon;
 
+// Missing key from the json like for cheat death, idk if needed later
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct ParsedItem {
     name: Option<String>,
     description: Option<String>,
     cost: Option<i32>,
+    tier:Option<i32>,
+    activation:Option<String>,
     slot: Option<String>,
-    bonus_fire_rate: Option<i32>,
+    components:Option<Vec<String>>,
     is_disabled:Option<bool>,
+    ability_cooldown:Option<f64>,
+    bonus_health:Option<i32>,
+    bullet_resist:Option<i32>,
+    bonus_fire_rate: Option<i32>,
 }
 
 fn valid_item(item:ParsedItem)->bool{
