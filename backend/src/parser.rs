@@ -4,6 +4,14 @@ use std::collections::HashMap;
 
 // Missing key from the json like for cheat death, idk if needed later
 // TODO: clean the desc of object in the final hash map
+pub trait ParsedItemProp{
+    fn expect_prop<T>(&self, prop: Option<T>, prop_name: &str, item_name:&str)->T;
+}
+impl ParsedItemProp for ParsedItem{
+    fn expect_prop<T>(&self, prop: Option<T>, prop_name: &str, item_name:&str)->T {
+        prop.unwrap_or_else(|| panic!("{} is missing for {}", prop_name, item_name))
+    }
+}
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct ParsedItem {
@@ -21,7 +29,9 @@ pub struct ParsedItem {
     pub bonus_health: Option<Value>,
     pub bullet_resist: Option<i32>,
     pub bonus_fire_rate: Option<Value>,
-    pub melee_resist:Option<i32>,
+    pub melee_resist: Option<i32>,
+    pub close_range_bonus_weapon_power: Option<i32>,
+    pub close_range_bonus_damage_range: Option<String>,
 }
 
 fn valid_item(item: &ParsedItem) -> bool {

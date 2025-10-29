@@ -3,7 +3,7 @@ use std::{ fs};
 
 mod parser;
 use parser::*;
-mod item;
+mod items;
 mod weapon;
 
 
