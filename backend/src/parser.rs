@@ -4,11 +4,11 @@ use std::collections::HashMap;
 
 // Missing key from the json like for cheat death, idk if needed later
 // TODO: clean the desc of object in the final hash map
-pub trait ParsedItemProp{
-    fn expect_prop<T>(&self, prop: Option<T>, prop_name: &str, item_name:&str)->T;
+pub trait ParsedItemProp {
+    fn expect_prop<T>(&self, prop: Option<T>, prop_name: &str, item_name: &str) -> T;
 }
-impl ParsedItemProp for ParsedItem{
-    fn expect_prop<T>(&self, prop: Option<T>, prop_name: &str, item_name:&str)->T {
+impl ParsedItemProp for ParsedItem {
+    fn expect_prop<T>(&self, prop: Option<T>, prop_name: &str, item_name: &str) -> T {
         prop.unwrap_or_else(|| panic!("{} is missing for {}", prop_name, item_name))
     }
 }

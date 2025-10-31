@@ -1,4 +1,5 @@
 use core::panic;
+use std::clone;
 
 use crate::parser::{ItemMap, ParsedItem, ParsedItemProp};
 struct ItemCore {
@@ -28,25 +29,9 @@ struct StatModifier {
     cond: Condition,
 }
 
-struct Item {
+pub struct Item {
     core: ItemCore,
     modifiers: Vec<StatModifier>,
-}
-
-impl Item {
-    fn new(name: &str, parsed: &ParsedItem, modifiers: Vec<StatModifier>) -> Item {
-        Item {
-            core: ItemCore {
-                name: parsed.expect_prop(parsed.name.clone(), "Name", name),                
-                desc: parsed.expect_prop(parsed.description.clone(), "Description", name),
-                cost: parsed.expect_prop(parsed.cost, "Cost", name),
-                tier: parsed.expect_prop(parsed.tier, "Tier", name),
-                activation: parsed.expect_prop(parsed.activation.clone(), "Activation", name),
-                slot: parsed.expect_prop(parsed.slot.clone(), "Slot", name),
-            },
-            modifiers,
-        }
-    }
 }
 
 fn meter_str_to_float(dist: &str) -> f64 {
@@ -55,44 +40,91 @@ fn meter_str_to_float(dist: &str) -> f64 {
         .expect("Error converting the distance")
 }
 // TODO: Item builder for implementing common modifiers function
-struct ItemBuilder{
-    name: &str,
-    parsed:&ParsedItem,
+struct ItemBuilder<'a> {
+    name: &'a str,
+    parsed: &'a ParsedItem,
     modifiers: Vec<StatModifier>,
 }
+
+impl<'a> ItemBuilder<'a> {
+    fn new(name: &'a str, items: &'a ItemMap) -> Self {
+        let parsed = items
+            .get(name)
+            .unwrap_or_else(|| panic!("{} not found in Item map", name));
+
+        ItemBuilder {
+            name,
+            parsed,
+            modifiers: Vec::new(),
+        }
+    }
+
+    fn add_modifier(mut self, modifier: StatModifier) -> Self {
+        self.modifiers.push(modifier);
+        self
+    }
+
+    fn with_melee_resist(self) -> Self {
+        let val = self
+            .parsed
+            .expect_prop(self.parsed.melee_resist, "Melee Resist", self.name);
+        self.add_modifier(StatModifier {
+            stat: StatType::MeleeRes,
+            val: ValueType::Int(val),
+            cond: Condition::Always,
+        })
+    }
+
+    fn with_close_range_weapon_damage(self) -> Self {
+        let val = self.parsed.expect_prop(
+            self.parsed.close_range_bonus_weapon_power,
+            "Close range weapon damage bonus",
+            self.name,
+        );
+        let dist = meter_str_to_float(self.parsed.expect_prop(
+            self.parsed.close_range_bonus_damage_range.as_deref(),
+            "Close range bonus damage distance",
+            self.name,
+        ));
+        self.add_modifier(StatModifier {
+            stat: StatType::WepDamage,
+            val: ValueType::Int(val),
+            cond: Condition::DistanceLessThan(dist),
+        })
+    }
+
+    fn build(self) -> Item {
+        Item {
+            core: ItemCore {
+                name: self
+                    .parsed
+                    .expect_prop(self.parsed.name.clone(), "Name", self.name),
+                desc: self.parsed.expect_prop(
+                    self.parsed.description.clone(),
+                    "Description",
+                    self.name,
+                ),
+                cost: self.parsed.expect_prop(self.parsed.cost, "Cost", self.name),
+                tier: self.parsed.expect_prop(self.parsed.tier, "Tier", self.name),
+                activation: self.parsed.expect_prop(
+                    self.parsed.activation.clone(),
+                    "Activation",
+                    self.name,
+                ),
+                slot: self
+                    .parsed
+                    .expect_prop(self.parsed.slot.clone(), "Slot", self.name),
+            },
+            modifiers: self.modifiers,
+        }
+    }
+}
 // Weapon Category
-fn build_close_quarters(items: &ItemMap) -> Item {
-    let name = "Close Quarters";
-    let item = items
-        .get(name)
-        .unwrap_or_else(|| panic!("{} is missing", name));
-
-    let melee_res = StatModifier {
-        stat: StatType::MeleeRes,
-        val: ValueType::Int(
-            item.melee_resist
-                .unwrap_or_else(|| panic!("Melee resist missing for {}", name)),
-        ),
-        cond: Condition::Always,
-    };
-
-    let dist = meter_str_to_float(
-        &item
-            .close_range_bonus_damage_range
-            .clone()
-            .unwrap_or_else(|| panic!("Range missing for {}", name)),
-    );
-    let weapon_damage = item
-        .close_range_bonus_weapon_power
-        .unwrap_or_else(|| panic!("Close range weapon damage missing for {}", name));
-    let close_weap_damage = StatModifier {
-        stat: StatType::WepDamage,
-        val: ValueType::Int(weapon_damage),
-        cond: Condition::DistanceLessThan(dist),
-    };
-    let modifiers = vec![melee_res, close_weap_damage];
-
-    Item::new(name, item, modifiers)
+pub fn build_close_quarters(items: &ItemMap) -> Item {
+    ItemBuilder::new("Close Quarters", items)
+        .with_melee_resist()
+        .with_close_range_weapon_damage()
+        .build()
 }
 
 // Durability Category
